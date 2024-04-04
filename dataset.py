@@ -4,6 +4,7 @@ import numpy as np
 import os
 from tqdm import tqdm
 import torch
+from tqdm import tqdm
 
 def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
     def load_sprites():
@@ -84,15 +85,17 @@ def encoding_dataloader(dataframe, batch_size=32, output_size=512):
         images = torch.stack(images)
         yield images
 
-def diffusion_dataset(dataframe, output_size=512):
+def diffusion_dataset(dataframe, output_size=8):
     images = []
+    pbar= tqdm(dataframe["path"])
     for path in dataframe["path"]:
         img = Image.open(path)
         img = img.resize((output_size, output_size))  # Resize the image
         img = np.array(img)[:,:,:3]  # Convert the image to numpy array and keep only the first 3 channels
         img = img/255
-        img = torch.tensor(img).permute(2,0,1)
 
         images.append(img)
-    images = torch.stack(images)
+        pbar.update(1)
+    images = np.stack(images)  # Use numpy's stack function
+    pbar.close()
     return images

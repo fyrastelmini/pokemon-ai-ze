@@ -1,33 +1,50 @@
+import argparse
 from dataset import diffusion_dataset
-from pythae.models import WAE_MMD, WAE_MMD_Config
+from pythae.models import AE, AEConfig
 from pythae.trainers import BaseTrainerConfig
 from pythae.pipelines.training import TrainingPipeline
 import pandas as pd
+import torch
+import yaml
 
-output_size=512
+# Define the argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('param_file', type=str, help='Path to the parameters.yml file')
+args = parser.parse_args()
+
+# Load parameters from the YAML file
+with open(args.param_file, 'r') as file:
+    params = yaml.safe_load(file)
+
+output_dir = params['output_dir']
+batch_size = params['batch_size']
+num_epochs = params['num_epochs']
+output_size = params['output_size']
+latent_dim = params['latent_dim']
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 # Load the dataset
 diffusion = pd.read_csv("encoding.csv")
 train_tensor = diffusion_dataset(diffusion,output_size=output_size)
+print(train_tensor.shape)
+print(train_tensor[0].shape)
 
 # Define the model
 config = BaseTrainerConfig(
-    output_dir='my_model',
+    output_dir=output_dir,
     learning_rate=1e-4,
-    per_device_train_batch_size=64,
-    per_device_eval_batch_size=64,
-    num_epochs=10, # Change this to train the model a bit more
+    per_device_train_batch_size=batch_size,
+    per_device_eval_batch_size=batch_size,
+    num_epochs=num_epochs,
 )
 
-
-model_config = WAE_MMD_Config(
+model_config = AEConfig(
     input_dim=(3, output_size, output_size),
-    latent_dim=128,
-    kernel_choice='imq',
-    reg_weight=100,
-    kernel_bandwidth=2
+    latent_dim=latent_dim
 )
 
-model = WAE_MMD(
+model = AE(
     model_config=model_config,
 )
 

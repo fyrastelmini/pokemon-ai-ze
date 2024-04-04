@@ -1,0 +1,5 @@
+output_dir: "./mymodel/encoder"
+batch_size: 32
+num_epochs: 100
+output_size: 512
+latent_dim: 128
