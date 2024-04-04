@@ -52,6 +52,8 @@ model = AE(
     model_config=model_config,
 )
 
+model = model.to(device)
+
 pipeline = TrainingPipeline(
     training_config=config,
     model=model
