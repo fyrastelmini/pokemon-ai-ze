@@ -52,7 +52,7 @@ def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
         encoding.to_csv("encoding.csv", index=False)
     return diffusion, encoding
 
-def dataloader(dataframe, batch_size=32, output_size=128):
+def diffusion_dataloader(dataframe, batch_size=32, output_size=128):
     # from a dataset of paths to .png files, load the images and resize them to output_size, format them as a tensor with batch size
     for index in range(0, len(dataframe), batch_size):
         batch = dataframe.iloc[index:index+batch_size]
@@ -65,3 +65,28 @@ def dataloader(dataframe, batch_size=32, output_size=128):
             images.append(img)
         images = tf.convert_to_tensor(images)
         yield images
+
+def encoding_dataloader(dataframe, batch_size=32, output_size=512):
+    # from a dataset of paths to .png files, load the images and resize them to output_size, format them as a tensor with batch size
+    for index in range(0, len(dataframe), batch_size):
+        batch = dataframe.iloc[index:index+batch_size]
+        images = []
+        for path in batch["path"]:
+            img = plt.imread(path)
+            img = img[:,:,:3]
+            img = img/255
+            img = tf.image.resize(img, (output_size, output_size))
+            images.append(img)
+        images = tf.convert_to_tensor(images)
+        yield images
+
+def diffusion_dataset(dataframe, output_size=512):
+    images = []
+    for path in dataframe["path"]:
+        img = plt.imread(path)
+        img = img[:,:,:3]
+        img = img/255
+        img = tf.image.resize(img, (output_size, output_size))
+        images.append(img)
+    images = tf.convert_to_tensor(images)
+    return images
