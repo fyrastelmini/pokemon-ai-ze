@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
+import tensorflow as tf
 
 def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
     def load_sprites():
@@ -50,3 +51,17 @@ def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
         diffusion.to_csv("diffusion.csv", index=False)
         encoding.to_csv("encoding.csv", index=False)
     return diffusion, encoding
+
+def dataloader(dataframe, batch_size=32, output_size=128):
+    # from a dataset of paths to .png files, load the images and resize them to output_size, format them as a tensor with batch size
+    for index in range(0, len(dataframe), batch_size):
+        batch = dataframe.iloc[index:index+batch_size]
+        images = []
+        for path in batch["path"]:
+            img = plt.imread(path)
+            img = img[:,:,:3]
+            img = img/255
+            img = tf.image.resize(img, (output_size, output_size))
+            images.append(img)
+        images = tf.convert_to_tensor(images)
+        yield images
