@@ -5,7 +5,7 @@ import os
 from tqdm import tqdm
 import torch
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
 def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
     def load_sprites():
         # get the path of all .png files under sprites/
@@ -29,7 +29,6 @@ def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
                 pbar.set_description(f"removing {path}")
                 pbar.update(1)
         pbar.close()
-        print(len(paths), len(sizes))
         # create a dataframe
         df = pd.DataFrame({"path": paths, "size": sizes})
         return df
