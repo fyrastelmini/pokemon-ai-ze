@@ -3,4 +3,4 @@ batch_size: 32
 num_epochs: 100
 output_size: 512
 latent_dim: 128
-fraction : 0.2
+fraction : 0.1
