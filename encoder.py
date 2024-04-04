@@ -21,12 +21,16 @@ batch_size = params['batch_size']
 num_epochs = params['num_epochs']
 output_size = params['output_size']
 latent_dim = params['latent_dim']
+fraction = params['fraction']
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # Load the dataset
 diffusion = pd.read_csv("encoding.csv")
+#load fraction
+diffusion = diffusion.sample(frac=fraction)
 train_tensor = diffusion_dataset(diffusion,output_size=output_size)
+train_tensor = torch.tensor(train_tensor).to(device)
 print(train_tensor.shape)
 print(train_tensor[0].shape)
 
