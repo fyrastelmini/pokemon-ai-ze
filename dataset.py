@@ -1,9 +1,9 @@
 import pandas as pd
+from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 from tqdm import tqdm
-import tensorflow as tf
+import torch
 
 def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
     def load_sprites():
@@ -53,17 +53,19 @@ def generate_dataset(sprites_path="sprites/sprites/pokemon/", save=False):
     return diffusion, encoding
 
 def diffusion_dataloader(dataframe, batch_size=32, output_size=128):
-    # from a dataset of paths to .png files, load the images and resize them to output_size, format them as a tensor with batch size
+    # from a dataset of paths to .png files, load the images and resize them to output_size, format them as a torch tensor with batch size
     for index in range(0, len(dataframe), batch_size):
         batch = dataframe.iloc[index:index+batch_size]
         images = []
         for path in batch["path"]:
-            img = plt.imread(path)
-            img = img[:,:,:3]
+            img = Image.open(path)
+            img = img.resize((output_size, output_size))  # Resize the image
+            img = np.array(img)[:,:,:3]  # Convert the image to numpy array and keep only the first 3 channels
             img = img/255
-            img = tf.image.resize(img, (output_size, output_size))
+            img = torch.tensor(img).permute(2,0,1)
+
             images.append(img)
-        images = tf.convert_to_tensor(images)
+        images = torch.stack(images)
         yield images
 
 def encoding_dataloader(dataframe, batch_size=32, output_size=512):
@@ -72,21 +74,25 @@ def encoding_dataloader(dataframe, batch_size=32, output_size=512):
         batch = dataframe.iloc[index:index+batch_size]
         images = []
         for path in batch["path"]:
-            img = plt.imread(path)
-            img = img[:,:,:3]
+            img = Image.open(path)
+            img = img.resize((output_size, output_size))  # Resize the image
+            img = np.array(img)[:,:,:3]  # Convert the image to numpy array and keep only the first 3 channels
             img = img/255
-            img = tf.image.resize(img, (output_size, output_size))
+            img = torch.tensor(img).permute(2,0,1)
+
             images.append(img)
-        images = tf.convert_to_tensor(images)
+        images = torch.stack(images)
         yield images
 
 def diffusion_dataset(dataframe, output_size=512):
     images = []
     for path in dataframe["path"]:
-        img = plt.imread(path)
-        img = img[:,:,:3]
+        img = Image.open(path)
+        img = img.resize((output_size, output_size))  # Resize the image
+        img = np.array(img)[:,:,:3]  # Convert the image to numpy array and keep only the first 3 channels
         img = img/255
-        img = tf.image.resize(img, (output_size, output_size))
+        img = torch.tensor(img).permute(2,0,1)
+
         images.append(img)
-    images = tf.convert_to_tensor(images)
+    images = torch.stack(images)
     return images
