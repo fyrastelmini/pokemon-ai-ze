@@ -1,64 +1,84 @@
-import argparse
-from dataset import diffusion_dataset
-from pythae.models import AE, AEConfig
-from pythae.trainers import BaseTrainerConfig
-from pythae.pipelines.training import TrainingPipeline
-import pandas as pd
 import torch
-import yaml
+from torch import nn
+import torch.optim as optim
+from dataset import encoding_dataloader
+import pandas as pd
+class ImageAutoencoder(nn.Module):
+    def __init__(self, input_output_size):
+        super(ImageAutoencoder, self).__init__()
 
-# Define the argument parser
-parser = argparse.ArgumentParser()
-parser.add_argument('param_file', type=str, help='Path to the parameters.yml file')
-args = parser.parse_args()
+        self.input_output_size = input_output_size
 
-# Load parameters from the YAML file
-with open(args.param_file, 'r') as file:
-    params = yaml.safe_load(file)
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Conv2d(self.input_output_size, 64, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(512, 1024, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+        )
 
-output_dir = params['output_dir']
-batch_size = params['batch_size']
-num_epochs = params['num_epochs']
-output_size = params['output_size']
-latent_dim = params['latent_dim']
-fraction = params['fraction']
+        # Decoder
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(1024, 512, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, self.input_output_size, kernel_size=3, stride=2, padding=1, output_padding=1),
+            nn.Sigmoid()  # to ensure the output is between 0 and 1
+        )
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+    
 
-# Load the dataset
-diffusion = pd.read_csv("encoding.csv")
-#load fraction
-diffusion = diffusion.sample(frac=fraction)
-train_tensor = diffusion_dataset(diffusion,output_size=output_size)
-train_tensor = torch.tensor(train_tensor).to(device)
-print(train_tensor.shape)
-print(train_tensor[0].shape)
 
-# Define the model
-config = BaseTrainerConfig(
-    output_dir=output_dir,
-    learning_rate=1e-4,
-    per_device_train_batch_size=batch_size,
-    per_device_eval_batch_size=batch_size,
-    num_epochs=num_epochs,
-)
+# Instantiate the autoencoder and the optimizer
+autoencoder = ImageAutoencoder(input_output_size=3)
+optimizer = optim.Adam(autoencoder.parameters())
 
-model_config = AEConfig(
-    input_dim=(3, output_size, output_size),
-    latent_dim=latent_dim
-)
+# Specify the loss function
+criterion = nn.MSELoss()
 
-model = AE(
-    model_config=model_config,
-)
+# Specify the number of epochs to train for
+num_epochs = 100
 
-model = model.to(device)
+# Specify the device to train on
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+autoencoder = autoencoder.to(device)
+dataframe = pd.read_csv("encoding.csv")
+print("Training...")
+# Training loop
+for epoch in range(num_epochs):
+    for batch in encoding_dataloader(dataframe):
+        # Move the batch to the device we're using. 
+        batch = batch.to(device).float()
 
-pipeline = TrainingPipeline(
-    training_config=config,
-    model=model
-)
+        # Zero the gradients
+        optimizer.zero_grad()
 
-pipeline(
-    train_data=train_tensor
-)
+        # Forward pass
+        outputs = autoencoder(batch)
+
+        # Compute the loss
+        loss = criterion(outputs, batch)
+
+        # Backward pass
+        loss.backward()
+
+        # Update the weights
+        optimizer.step()
+
+    # Print loss for this epoch
+    print(f"Epoch {epoch+1}/{num_epochs}, Loss: {loss.item()}")
